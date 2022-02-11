@@ -1,0 +1,262 @@
+version: "3.3"
+
+services:
+networks:
+  medianet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
+
+services:
+  transmission:
+    image: haugene/transmission-openvpn:latest
+    container_name: transmission
+    restart: always
+    volumes:
+      - /nfs/pool/downloads:/data
+    environment: 
+      - LOCAL_NETWORK=${LOCAL_NETWORK}
+      - OPENVPN_PROVIDER=${OPENVPN_PROVIDER}
+      - OPENVPN_USERNAME=${OPENVPN_USERNAME}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - PUID=${PUID}
+      - PGID=${PGID}
+    ports:
+      - 9091:9091
+    cap_add:
+      - net_admin
+    networks:
+      - medianet
+
+  calibre:
+    image:  linuxserver/calibre:latest
+    container_name: calibre
+    restart: always
+    volumes:
+      - /nfs/pool/media/books:/books
+      - /pool/calibre/calibre:/config
+    environment:
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - umask_set=022
+    ports:
+      - 3389:3389
+      - 8080:8080
+    
+  jackett:
+    image: linuxserver/jackett:latest
+    container_name: jackett
+    restart: always
+    volumes:
+      - /pool/jackett:/config
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 9117:9117
+    networks:
+      - medianet
+
+  lidarr:
+    image: linuxserver/lidarr:latest
+    container_name: lidarr
+    restart: always
+    volumes:
+      - /nfs/pool/downloads/completed:/downloads
+      - /pool/lidarr:/config
+      - /nfs/pool/media/music:/music
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8686:8686
+    networks:
+      - medianet
+
+  radarr:
+    image: mdhiggins/radarr-sma
+    container_name: radarr
+    restart: always
+    volumes:
+      - /pool/radarr:/config
+      - /pool/radarr/sma:/usr/local/sma/config
+      - /nfs/pool/downloads/completed:/downloads
+      - /nfs/pool/media/movies:/movies
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 7878:7878
+    networks:
+      - medianet
+  
+  readarr:
+    image: hotio/readarr:nightly
+    container_name: readarr
+    restart: always
+    volumes:
+      - /nfs/pool/media/books:/books
+      - /nfs/pool/downloads/completed:/downloads
+      - /pool/readarr:/config
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8787:8787
+    networks:
+      - medianet
+
+  sonarr:
+    image: mdhiggins/sonarr-sma
+    container_name: sonarr
+    restart: always
+    volumes:
+      - /pool/sonarr:/config
+      - /pool/sonarr/sma:/usr/local/config/sma
+      - /nfs/pool/media/tv:/tv
+      - /nfs/pool/downloads/completed:/downloads
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8989:8989
+    networks:
+      - medianet
+  
+  bazarr:
+    image: ghcr.io/linuxserver/bazarr
+    container_name: bazarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /pool/bazarr/config:/config
+      - /nfs/pool/media/movies:/movies
+      - /nfs/pool/media/tv:/tv
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+  
+  tautulli:
+    image: linuxserver/tautulli:latest
+    container_name: tautulli
+    restart: always
+    volumes:
+      - /pool/tautulli:/config
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8181:8181
+    networks:
+      - medianet
+
+  nzbget:
+    image: ghcr.io/linuxserver/nzbget
+    container_name: nzbget
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /pool/nzbget:/config
+      - /nfs/pool/downloads:/downloads
+    ports:
+      - 6789:6789
+    restart: unless-stopped
+    networks:
+      - medianet
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    volumes:
+      - /pool/caddy/data:/data
+      - /pool/caddy/config:/config
+      - /pool/caddy/etc/caddy:/etc/caddy
+    ports:
+      - 81:80
+      - 444:443
+    restart: unless-stopped
+    networks:
+      - medianet
+
+  wireguard:
+    image: ghcr.io/linuxserver/wireguard
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - TZ=${TZ}
+      - SERVERURL=lukesturgis.synology.me
+      - SERVERPORT=51820 #optional
+      - PEERS=1 #optional
+      - PEERDNS=auto #optional
+    volumes:
+      - /pool/wireguard/config:/config
+      - /lib/modules:/lib/modules
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+    networks:
+      - medianet
+
+  overseerr:
+    image: ghcr.io/linuxserver/overseerr
+    container_name: overseerr
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - /pool/overseerr/config:/config
+    ports:
+      - 44005:5055
+    restart: unless-stopped
+    networks:
+      - medianet
+
+  heimdall:
+    image: ghcr.io/linuxserver/heimdall
+    container_name: heimdall
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - /pool/heimdall/config:/config
+    ports:
+      - 80:80
+      - 443:443
+    restart: unless-stopped
+
+  minecraft:
+    image: itzg/minecraft-server
+    container_name: minecraft
+    ports:
+      - 25565:25565
+      - 25575:25575
+    environment:
+      - EULA="TRUE"
+      - MEMORY=6G
+      - WHITELIST=nourishablegecko
+    volumes:
+      - /pool/minecraft:/data 
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+
+  ytmdl:
+    image: ghcr.io/deepjyoti30/ytmdl-web:latest
+    container_name: ytmdl
+    ports:
+      - 8082:8082
+    restart: unless-stopped
