@@ -209,7 +209,7 @@ services:
     volumes:
       - /pool/heimdall/config:/config
     ports:
-      - 82:80
+      - 80:80
       - 444:443
     restart: unless-stopped
 
@@ -258,21 +258,6 @@ services:
     volumes:
       - /pool/influxdb:/var/lib/influxdb
 
-  varken:
-    hostname: varken
-    container_name: varken
-    image: boerderij/varken
-    networks:
-      - medianet
-      - monitoring
-    volumes:
-      - /pool/varken:/config
-    environment:
-      - TZ=America/New_York
-    depends_on:
-      - influxdb
-    restart: unless-stopped
-
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:develop
     networks:
@@ -294,18 +279,6 @@ services:
     volumes:
       - /pool/ddclient:/config
     restart: unless-stopped
-
-  dashy:
-    image: lissy93/dashy
-    container_name: dashy
-    restart: unless-stopped
-    ports:
-      - 4000:80
-    volumes:
-      - /pool/dashy/conf.yml:/app/public/conf.yml
-    networks:
-      - medianet
-      - monitoring
 
   nextcloud:
     image: lscr.io/linuxserver/nextcloud
@@ -337,47 +310,10 @@ services:
       - NET_ADMIN
     restart: unless-stopped
 
-  organizr:
-    container_name: organizr
-    image: organizr/organizr
-    ports:
-      - '86:80'
+  plex-meta-manager:
+    image: meisnate12/plex-meta-manager
+    container_name: plex-meta-manager
     volumes:
-      - /pool/organizr:/config
-
-  netdata:
-    image: netdata/netdata
-    container_name: netdata
-    ports:
-      - 19999:19999
-    restart: unless-stopped
-    cap_add:
-      - SYS_PTRACE
-    security_opt:
-      - apparmor:unconfined
-    volumes:
-      - netdataconfig:/etc/netdata
-      - netdatalib:/var/lib/netdata
-      - netdatacache:/var/cache/netdata
-      - /etc/passwd:/host/etc/passwd:ro
-      - /etc/group:/host/etc/group:ro
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /etc/os-release:/host/etc/os-release:ro
-    environment:
-      - NETDATA_CLAIM_TOKEN=${NETDATA_CLAIM_TOKEN}
-      - NETDATA_CLAIM_URL=https://app.netdata.cloud
-      - NETDATA_CLAIM_ROOMS=${NETDATA_CLAIM_ROOMS}
-      - DISABLE_TELEMETRY=1
-
-  guacd:
-    image: lscr.io/linuxserver/guacd
-    container_name: guacd
-    ports:
-      - 4822:4822
+      - /pool/plex-meta-manager:/config
     restart: unless-stopped
 
-volumes:
-  netdataconfig:
-  netdatalib:
-  netdatacache:
